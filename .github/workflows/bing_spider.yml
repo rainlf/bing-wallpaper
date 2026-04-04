@@ -1,0 +1,45 @@
+name: Bing Spider Daily
+
+on:
+  schedule:
+    # 每天 UTC 时间 20:00 执行，即北京时间凌晨 4:00
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    # 允许手动触发执行
+
+jobs:
+  spider:
+    runs-on: ubuntu-latest
+    
+    # 赋予 GITHUB_TOKEN 写权限，否则无法 push
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          # 我们需要获取提交历史，以免覆盖
+          fetch-depth: 1
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Run Python Spider
+        run: python bing_spider.py
+        
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add data/
+          
+          # 检查是否有文件改动，如果有则提交并推送
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto update bing images and videos"
+            git push
+          fi
